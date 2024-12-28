@@ -209,7 +209,7 @@ def timeIntegration_njit_elementwise(
             exc_input_d[no] = 0
 
             for l in range(N):
-                exc_input_d[no] += K_gl * Cmat[no, l] * (excs[l, i - Dmat_ndt[no, l] - 1])
+                exc_input_d[no] += K_gl[no] * Cmat[no, l] * (excs[l, i - Dmat_ndt[no, l] - 1])
 
             # Wilson-Cowan model
             exc_rhs = (
@@ -450,7 +450,7 @@ def compute_nw_input(N, T, K_gl, cmat, dmat_ndt, exc_values):
     for t in range(1, T):
         for n in range(N):
             for l in range(N):
-                nw_input[n, t] += K_gl * cmat[n, l] * (exc_values[l, t - dmat_ndt[n, l] - 1])
+                nw_input[n, t] += K_gl[n] * cmat[n, l] * (exc_values[l, t - dmat_ndt[n, l] - 1])
     return nw_input
 
 
@@ -522,7 +522,7 @@ def compute_hx_nw(
                 hx_nw[n1, n2, t, sv["exc"], sv["exc"]] = (
                     (1.0 - e[n1, t])
                     * logistic_der(exc_input[n1, t], a_exc, mu_exc)
-                    * K_gl
+                    * K_gl[n1]
                     * cmat[n1, n2]
                 ) / tau_exc
 
