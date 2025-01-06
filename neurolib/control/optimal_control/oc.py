@@ -16,6 +16,13 @@ def getdefaultweights():
         value_type=types.float64,
     )
     weights["w_p"] = 1.0
+
+    weights["w_f_osc"] = 0.0
+    weights["w_f_sync"] = 0.0
+
+    weights["w_cc"] = 0.0
+    weights["w_var"] = 0.0
+
     weights["w_2"] = 0.0
     weights["w_1D"] = 0.0
 
