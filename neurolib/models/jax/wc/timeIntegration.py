@@ -74,7 +74,7 @@ def timeIntegration_args(params):
 
     # ------------------------------------------------------------------------
     # Initialization
-    t = jnp.arange(1, jnp.round(duration, 6) / dt + 1) * dt  # Time variable (ms)
+    t = jnp.arange(1, 1 + jnp.round(duration, 6) / dt) * dt  # Time variable (ms)
     sqrt_dt = jnp.sqrt(dt)
 
     max_global_delay = int(jnp.max(Dmat_ndt))
@@ -87,8 +87,8 @@ def timeIntegration_args(params):
     exc_ext_baseline = params["exc_ext_baseline"]
     inh_ext_baseline = params["inh_ext_baseline"]
 
-    exc_ext = mu.adjustArrayShape_jax(params["exc_ext"], jnp.zeros((N, startind + len(t))))
-    inh_ext = mu.adjustArrayShape_jax(params["inh_ext"], jnp.zeros((N, startind + len(t))))
+    exc_ext = mu.adjustArrayShape_jax(params["exc_ext"], jnp.zeros((N, len(t))))
+    inh_ext = mu.adjustArrayShape_jax(params["inh_ext"], jnp.zeros((N, len(t))))
 
     # Set initial values
     # if initial values are just a Nx1 array
@@ -209,7 +209,7 @@ def timeIntegration_elementwise(
     # Iterating through time steps
     (exc_history, inh_history, exc_ou, inh_ou, i), (excs_new, inhs_new) = jax.lax.scan(
         update_step,
-        (exc_init, inh_init, exc_ou_init, inh_ou_init, startind),
+        (exc_init, inh_init, exc_ou_init, inh_ou_init, 0),
         xs=None,
         length=len(t),
     )
@@ -287,7 +287,7 @@ def get_update_step(
                     - c_inhexc * inh_history[:, -1]  # input from the inhibitory population
                     + exc_input_d  # input from other nodes
                     + exc_ext_baseline  # baseline external input (static)
-                    + exc_ext[:, i - 1]  # time-dependent external input
+                    + exc_ext[:, i]  # time-dependent external input
                 )
                 + exc_ou  # ou noise
             )
@@ -302,7 +302,7 @@ def get_update_step(
                     c_excinh * exc_history[:, -1]  # input from the excitatory population
                     - c_inhinh * inh_history[:, -1]  # input from within the inhibitory population
                     + inh_ext_baseline  # baseline external input (static)
-                    + inh_ext[:, i - 1]  # time-dependent external input
+                    + inh_ext[:, i]  # time-dependent external input
                 )
                 + inh_ou  # ou noise
             )
@@ -313,12 +313,8 @@ def get_update_step(
         inh_new = jnp.clip(inh_history[:, -1] + dt * inh_rhs, 0, 1)
 
         # Update Ornstein-Uhlenbeck process for noise
-        exc_ou = (
-            exc_ou + (exc_ou_mean - exc_ou) * dt / tau_ou + sigma_ou * sqrt_dt * noise_exc[:, i - startind]
-        )  # mV/ms
-        inh_ou = (
-            inh_ou + (inh_ou_mean - inh_ou) * dt / tau_ou + sigma_ou * sqrt_dt * noise_inh[:, i - startind]
-        )  # mV/ms
+        exc_ou = exc_ou + (exc_ou_mean - exc_ou) * dt / tau_ou + sigma_ou * sqrt_dt * noise_exc[:, i]  # mV/ms
+        inh_ou = inh_ou + (inh_ou_mean - inh_ou) * dt / tau_ou + sigma_ou * sqrt_dt * noise_inh[:, i]  # mV/ms
 
         return (
             (
