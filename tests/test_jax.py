@@ -104,6 +104,9 @@ class TestWC_jax(unittest.TestCase):
 
         model_jax.run(chunkwise=True, bold=True, append_outputs=True, chunksize=20000)
 
+        # assert same output shape
+        self.assertTrue(model.exc.shape == model_jax.exc.shape)
+
         # jit changes the exact numerics of outputs
         self.assertTrue(np.allclose(model.BOLD.BOLD, model_jax.BOLD.BOLD, rtol=1e-3))
 
