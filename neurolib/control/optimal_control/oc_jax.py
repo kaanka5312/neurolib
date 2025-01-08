@@ -125,7 +125,7 @@ class OcWc:
     def compute_var_cost(self, output):
         return jnp.var(output, axis=(0, 1)).mean()
 
-    def compute_osc_fourier_cost(self, output):
+    def compute_osc_fourier_cost(self, output): ...
 
     def optimize_deterministic(self, n_max_iterations, output_every_nth=None):
         """Compute the optimal control signal for noise averaging method 0.
