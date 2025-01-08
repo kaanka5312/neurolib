@@ -92,6 +92,10 @@ class OcWc:
             accuracy_cost += self.weights["w_p"] * 0.5 * self.model.params.dt * jnp.sum((output - self.target) ** 2)
         if self.weights["w_cc"] != 0.0:
             accuracy_cost += self.weights["w_cc"] * self.compute_cc_cost(output)
+        if self.weights["w_var"] != 0.0:
+            accuracy_cost += self.weights["w_var"] * self.compute_var_cost(output)
+        if self.weights["w_f_osc"] != 0.0:
+            accuracy_cost += self.weights["w_f_osc"] * self.compute_osc_fourier_cost(output)
         return accuracy_cost
 
     def control_strength_cost(self, control):
@@ -117,6 +121,11 @@ class OcWc:
         cost = jnp.sum(jnp.sum(costmat, axis=(1, 2)) - diag) * self.model.params.dt / 2.0
         cost *= -2.0 / (self.model.params.N * (self.model.params.N - 1) * self.T * self.model.params.dt)
         return cost
+
+    def compute_var_cost(self, output):
+        return jnp.var(output, axis=(0, 1)).mean()
+
+    def compute_osc_fourier_cost(self, output):
 
     def optimize_deterministic(self, n_max_iterations, output_every_nth=None):
         """Compute the optimal control signal for noise averaging method 0.
