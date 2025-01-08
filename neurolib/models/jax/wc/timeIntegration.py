@@ -87,8 +87,8 @@ def timeIntegration_args(params):
     exc_ext_baseline = params["exc_ext_baseline"]
     inh_ext_baseline = params["inh_ext_baseline"]
 
-    exc_ext = mu.adjustArrayShape_jax(params["exc_ext"], jnp.zeros((N, len(t))))
-    inh_ext = mu.adjustArrayShape_jax(params["inh_ext"], jnp.zeros((N, len(t))))
+    exc_ext = mu.adjustArrayShape_jax(params["exc_ext"], jnp.zeros((N, len(t)))).astype(float)
+    inh_ext = mu.adjustArrayShape_jax(params["inh_ext"], jnp.zeros((N, len(t)))).astype(float)
 
     # Set initial values
     # if initial values are just a Nx1 array
