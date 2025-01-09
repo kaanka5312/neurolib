@@ -222,32 +222,3 @@ class OcWc(Optimize):
     def compute_kuramoto_cost(self, output):
         phase = jnp.angle(hilbert_jax(output, axis=2))
         return -jnp.mean(jnp.abs(jnp.mean(jnp.exp(complex(0,1)*phase), axis=1)))
-    
-
-    def optimize_deterministic(self, n_max_iterations, output_every_nth=None):
-        """Compute the optimal control signal for noise averaging method 0.
-
-        :param n_max_iterations: maximum number of iterations of gradient descent
-        :type n_max_iterations: int
-        """
-
-        output = self.get_output(self.control)
-
-        cost = self.compute_total_cost(self.control, output)
-        print(f"Cost in iteration 0: %s" % (cost))
-        if len(self.cost_history) == 0:  # add only if control model has not yet been optimized
-            self.cost_history.append(cost)
-
-        for i in range(1, n_max_iterations + 1):
-            self.gradient = self.compute_gradient(self.control)
-
-            updates, self.opt_state = self.optimizer.update(self.gradient, self.opt_state)
-            self.control = optax.apply_updates(self.control, updates)
-
-            output = self.get_output(self.control)
-            if output_every_nth is not None and i % output_every_nth == 0:
-                cost = self.compute_total_cost(self.control, output)
-                self.cost_history.append(cost)
-                print(f"Cost in iteration %s: %s" % (i, cost))
-
-        print(f"Final cost : %s" % (cost))
