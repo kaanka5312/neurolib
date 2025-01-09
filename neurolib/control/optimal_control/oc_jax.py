@@ -13,24 +13,25 @@ from neurolib.control.optimal_control.oc import getdefaultweights
 wc_default_control_params = ["exc_ext", "inh_ext"]
 wc_default_target_params = ["exc", "inh"]
 
-def hilbert_jax(signal, axis=-1): 
+
+def hilbert_jax(signal, axis=-1):
 
     n = signal.shape[axis]
     h = jnp.zeros(n)
     h = h.at[0].set(1)
 
     if n % 2 == 0:
-        h = h.at[1:n//2].set(2)     
-        h = h.at[n//2].set(1)      
+        h = h.at[1 : n // 2].set(2)
+        h = h.at[n // 2].set(1)
     else:
-        h = h.at[1:(n+1)//2].set(2)
+        h = h.at[1 : (n + 1) // 2].set(2)
 
     h = jnp.expand_dims(h, tuple(i for i in range(signal.ndim) if i != axis))
     h = jnp.broadcast_to(h, signal.shape)
-    
+
     fft_signal = jnp.fft.fft(signal, axis=axis)
     analytic_fft = fft_signal * h
-    
+
     analytic_signal = jnp.fft.ifft(analytic_fft)
     return analytic_signal
 
@@ -170,8 +171,8 @@ class OcWc(Optimize):
             accuracy_cost += self.weights["w_f_osc"] * self.compute_osc_fourier_cost(output)
         if self.weights["w_f_sync"] != 0.0:
             accuracy_cost += self.weights["w_f_sync"] * self.compute_sync_fourier_cost(output)
-        if self.weights["w_kuramoto"] != 0.0:
-            accuracy_cost += self.weights["w_kuramoto"] * self.compute_kuramoto_cost(output)
+        if self.weights["w_ko"] != 0.0:
+            accuracy_cost += self.weights["w_ko"] * self.compute_kuramoto_cost(output)
         return accuracy_cost
 
     def control_strength_cost(self, control):
@@ -200,25 +201,25 @@ class OcWc(Optimize):
 
     def compute_var_cost(self, output):
         return jnp.var(output, axis=(0, 1)).mean()
-    
+
     def get_fourier_component(self, data, target_period):
-        fourier_series = jnp.abs(jnp.fft.fft(data)[:len(data)//2])
-        freqs = jnp.fft.fftfreq(data.size,d=self.model.params.dt)[:len(data)//2]
-        return fourier_series[jnp.argmin(jnp.abs(freqs - 1./target_period))]
+        fourier_series = jnp.abs(jnp.fft.fft(data)[: len(data) // 2])
+        freqs = jnp.fft.fftfreq(data.size, d=self.model.params.dt)[: len(data) // 2]
+        return fourier_series[jnp.argmin(jnp.abs(freqs - 1.0 / target_period))]
 
     def compute_osc_fourier_cost(self, output):
         cost = 0.0
         for n in range(output.shape[1]):
             for v in range(output.shape[0]):
-                cost -= self.get_fourier_component(output[v, n], self.target)**2
-        return cost / (output.shape[2] * self.model.params.dt)**2
-    
+                cost -= self.get_fourier_component(output[v, n], self.target) ** 2
+        return cost / (output.shape[2] * self.model.params.dt) ** 2
+
     def compute_sync_fourier_cost(self, output):
         cost = 0.0
         for v in range(output.shape[0]):
-            cost -= self.get_fourier_component(jnp.sum(output[v], axis=0), self.target)**2
-        return cost / (output.shape[2] * self.model.params.dt)**2
+            cost -= self.get_fourier_component(jnp.sum(output[v], axis=0), self.target) ** 2
+        return cost / (output.shape[2] * self.model.params.dt) ** 2
 
     def compute_kuramoto_cost(self, output):
         phase = jnp.angle(hilbert_jax(output, axis=2))
-        return -jnp.mean(jnp.abs(jnp.mean(jnp.exp(complex(0,1)*phase), axis=1)))
+        return -jnp.mean(jnp.abs(jnp.mean(jnp.exp(complex(0, 1) * phase), axis=1)))
