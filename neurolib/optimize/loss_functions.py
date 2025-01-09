@@ -2,6 +2,17 @@ import jax
 import jax.numpy as jnp
 
 
+def get_l2_regularization(scale=1.0):
+    def l2_regularization(params):
+        """
+        Args:
+            params (dict[str, jax.numpy.ndarray]): Dictionary of parameters being optimized
+        """
+        return scale * jnp.linalg.norm(jnp.stack(list(params.values())))
+
+    return l2_regularization
+
+
 def variance_loss(output):
     """
     Args:

@@ -42,14 +42,17 @@ class Optimize:
         self.args = dict(zip(self.model.args_names, args_values))
 
         self.T = len(self.args["t"])
-        self.startind = self.model.getMaxDelay()
+        self.startind = self.model.getMaxDelay() + 1
         if init_params is not None:
             self.params = init_params
         else:
             self.params = dict(zip(param_names, [self.args[p] for p in param_names]))
         self.opt_state = self.optimizer.init(self.params)
 
-        compute_loss = lambda params: self.loss_function(self.get_output(params)) + self.regularization_function(params)
+        # TODO: instead apply individually to each param
+        compute_loss = lambda params: self.loss_function(
+            jnp.stack(list(self.get_output(params).values()))
+        ) + self.regularization_function(params)
         self.compute_loss = jax.jit(compute_loss)
         self.compute_gradient = jax.jit(jax.grad(self.compute_loss))
 
@@ -70,25 +73,25 @@ class Optimize:
 
     def get_output(self, params):
         simulation_results = self.simulate(params)
-        return jnp.stack([simulation_results[tp][:, self.startind :] for tp in self.target_param_names])
+        return {tp: simulation_results[tp][:, self.startind :] for tp in self.target_param_names}
 
     def optimize(self, n_max_iterations, output_every_nth=None):
-        loss = self.compute_loss(self.control)
+        loss = self.compute_loss(self.params)
         print(f"loss in iteration 0: %s" % (loss))
-        if len(self.cost_history) == 0:  # add only if control model has not yet been optimized
+        if len(self.cost_history) == 0:  # add only if params have not yet been optimized
             self.cost_history.append(loss)
 
         for i in range(1, n_max_iterations + 1):
-            self.gradient = self.compute_gradient(self.control)
+            self.gradient = self.compute_gradient(self.params)
             updates, self.opt_state = self.optimizer.update(self.gradient, self.opt_state)
-            self.control = optax.apply_updates(self.control, updates)
+            self.params = optax.apply_updates(self.params, updates)
 
             if output_every_nth is not None and i % output_every_nth == 0:
-                loss = self.compute_loss(self.control)
+                loss = self.compute_loss(self.params)
                 self.cost_history.append(loss)
                 print(f"loss in iteration %s: %s" % (i, loss))
 
-        loss = self.compute_loss(self.control)
+        loss = self.compute_loss(self.params)
         print(f"Final loss : %s" % (loss))
 
 
@@ -176,3 +179,7 @@ class Oc(Optimize):
     def compute_ds_cost(self, control):
         eps = 1e-6  # avoid grad(sqrt(0.0))
         return jnp.sum(jnp.sqrt(jnp.sum(control**2, axis=2) * self.model.params.dt + eps))
+
+    def optimize(self, *args, **kwargs):
+        super().optimize(*args, **kwargs)
+        self.control = self.params
